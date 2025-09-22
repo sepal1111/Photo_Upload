@@ -9,21 +9,29 @@
         button { background-color: #0071e3; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 10px; }
         button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
         #upload-form { display: none; }
-        #status { margin-top: 20px; font-size: 14px; color: #606770; min-height: 20px; }
+        #status { margin-top: 20px; font-size: 14px; color: #606770; min-height: 20px; text-align: left; }
+        /* 新增下拉選單的樣式 */
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
+        select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Google Drive 上傳工具</h1>
-        <h2>2026_01_28</h1>
+    
     <div id="auth-container">
         <p>請先授權存取您的 Google Drive。</p>
         <button id="authorize_button" onclick="handleAuthClick()">授權</button>
     </div>
 
     <div id="upload-form">
-        <p>授權成功！請選擇檔案上傳。</p>
+        <p>授權成功！請選擇資料夾並上傳檔案。</p>
+        
+        <!-- 新增的下拉選單 -->
+        <label for="folder_select">選擇上傳資料夾：</label>
+        <select id="folder_select"></select>
+        
         <input type="file" id="file_input" multiple>
         <button id="upload_button" onclick="handleFileUpload()">上傳</button>
     </div>
@@ -31,6 +39,7 @@
     <div id="status"></div>
 </div>
 
+<!-- 載入 Google API 函式庫 -->
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script type="text/javascript">
@@ -39,45 +48,59 @@
     // =========================================================================
     // 從 Google Cloud Platform 複製的用戶端 ID
     const CLIENT_ID = '1003378114623-a8sf8d4bar0t8co3rk6nsm7oeu3p2nro.apps.googleusercontent.com'; 
-    // 您要上傳到的目標資料夾 ID
-    const FOLDER_ID = '1G7di8fJeijwpEo1J-ODxKqqqp7ZQy07n';
+    
+    // **【重要修改】**
+    // 請在此處填入您 8 個資料夾的名稱與 ID
+    // "顯示在選單上的名稱": "從Google Drive網址複製的資料夾ID"
+    const FOLDERS = {
+        "2026年1月27日": "1Gn4O-CeLsH5l0Yg0_cq50E3f6ZPLAjbf",
+        "2026年1月28日": "1G7di8fJeijwpEo1J-ODxKqqqp7ZQy07n",
+        "2026年1月29日": "1KI1OxXRRBeUNCas3e87EcjcYFSmMF-CH",
+        "2026年1月30日": "165bttUETRKK7T64RxumqaaQgqGUg5aZK",
+        "2026年1月31日": "1BQERaQ54AvmAuftgYtNPvTeT4gKVXeW4",
+        "2026年2月01日": "1tlqKeiTW4m4ecBmlysLsGOvYlYGhpb2M",
+        "2026年2月02日": "1IC55j2XSRxGWYR9ZNPTUPqeoc2C2z1aM",
+        "2026年2月03日": "1hXsrj-FSxHi7tXeEOByQUgzcGH0ceiKM"
+    };
     // =========================================================================
 
-    // 我們需要向使用者請求的權限
     const SCOPES = 'https://www.googleapis.com/auth/drive.file';
     
     let tokenClient;
-    let gapiInited = false;
-    let gisInited = false;
 
     const authButton = document.getElementById('authorize_button');
     const uploadForm = document.getElementById('upload-form');
     const statusDiv = document.getElementById('status');
     const fileInput = document.getElementById('file_input');
+    const folderSelect = document.getElementById('folder_select');
     
-    // 網頁載入後，初始化 Google API 用戶端
+    // 網頁載入後，初始化 Google API 用戶端並填入下拉選單
     window.onload = () => {
-        gapi.load('client', initializeGapiClient);
+        // 填入下拉選單選項
+        for (const name in FOLDERS) {
+            const option = document.createElement('option');
+            option.value = FOLDERS[name];
+            option.textContent = name;
+            folderSelect.appendChild(option);
+        }
+
+        gapi.load('client', async () => {
+            await gapi.client.init({});
+        });
+        
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
-            callback: '', // 回呼函式會在 requestAccessToken 中動態設定
+            callback: '', 
         });
-        gisInited = true;
     };
-
-    async function initializeGapiClient() {
-        await gapi.client.init({}); // 空的 init 即可
-        gapiInited = true;
-    }
 
     // 點擊「授權」按鈕時
     function handleAuthClick() {
-        tokenClient.callback = async (resp) => {
+        tokenClient.callback = (resp) => {
             if (resp.error !== undefined) {
                 throw (resp);
             }
-            // 授權成功，顯示上傳表單，隱藏授權按鈕
             document.getElementById('auth-container').style.display = 'none';
             uploadForm.style.display = 'block';
             statusDiv.innerText = '授權成功！';
@@ -92,29 +115,36 @@
 
     // 點擊「上傳」按鈕時
     async function handleFileUpload() {
+        // **【重要修改】** 從下拉選單取得目標資料夾 ID
+        const selectedFolderId = folderSelect.value;
         const files = fileInput.files;
+
         if (files.length === 0) {
             statusDiv.innerText = '請先選擇檔案！';
             return;
         }
+        if (!selectedFolderId || selectedFolderId.startsWith("YOUR_FOLDER_ID")) {
+            statusDiv.innerText = '錯誤：請先在程式碼中設定有效的資料夾 ID！';
+            return;
+        }
 
-        statusDiv.innerHTML = ''; // 清空狀態
+
+        statusDiv.innerHTML = ''; 
 
         for (const file of files) {
             try {
                 statusDiv.innerHTML += `正在上傳 ${file.name}... <br>`;
                 
-                // 步驟 1: 建立檔案元數據 (metadata)
                 const metadata = {
                     name: file.name,
-                    parents: [FOLDER_ID] // 指定父資料夾
+                    // **【重要修改】** 使用選擇的資料夾 ID
+                    parents: [selectedFolderId] 
                 };
 
                 const form = new FormData();
                 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                 form.append('file', file);
                 
-                // 步驟 2: 使用 fetch 直接上傳檔案
                 const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                     method: 'POST',
                     headers: new Headers({ 'Authorization': 'Bearer ' + gapi.client.getToken().access_token }),
@@ -133,9 +163,10 @@
                 statusDiv.innerHTML += `❌ ${file.name} 上傳失敗: ${error.message} <br>`;
             }
         }
-        fileInput.value = ''; // 清空選擇
+        fileInput.value = ''; 
     }
 </script>
 
 </body>
 </html>
+
