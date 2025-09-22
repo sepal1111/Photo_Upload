@@ -2,34 +2,32 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <!-- 關鍵修改 1：加入 viewport meta 標籤，讓網頁適應行動裝置 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drive API 上傳工具</title>
     <style>
-        /* 關鍵修改 2：全面優化 CSS 以適應手機瀏覽 */
         * {
-            box-sizing: border-box; /* 統一元素的尺寸計算方式 */
+            box-sizing: border-box;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 1rem; /* 在頁面周圍增加一些間距 */
+            padding: 1rem;
             background-color: #f0f2f5;
             color: #1d1d1f;
             line-height: 1.5;
         }
         .container {
             background-color: #fff;
-            padding: 1.5rem; /* 調整內部間距，使其在手機上更緊湊 */
+            padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             text-align: center;
             max-width: 500px;
             width: 100%;
-            margin: 0 auto; /* 水平置中 */
+            margin: 0 auto;
         }
         h1 {
-            font-size: 1.5rem; /* 調整標題字體大小 */
+            font-size: 1.5rem;
             margin-top: 0;
             margin-bottom: 0.5rem;
         }
@@ -48,13 +46,13 @@
             font-size: 1rem;
             font-weight: 600;
             margin: 10px 0;
-            width: 100%; /* 讓按鈕變為全寬，方便觸控 */
+            width: 100%;
         }
         button:disabled {
             background-color: #a0a0a0;
             cursor: not-allowed;
         }
-        #upload-form {
+        #upload-form, #auth-container.hidden {
             display: none;
         }
         #status {
@@ -66,6 +64,7 @@
             background-color: #f5f5f7;
             padding: 0.8rem;
             border-radius: 8px;
+            word-wrap: break-word;
         }
         label {
             display: block;
@@ -74,14 +73,30 @@
             color: #333;
             text-align: left;
         }
-        select, input[type="file"] {
+        select, input[type="file"], input[type="text"] {
             width: 100%;
-            padding: 12px; /* 增加內距，方便觸控 */
+            padding: 12px;
             margin-bottom: 20px;
             border: 1px solid #d2d2d7;
             border-radius: 8px;
             font-size: 1rem;
             background-color: #f5f5f7;
+        }
+        .radio-group {
+            text-align: left;
+            margin-bottom: 20px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .radio-group label {
+             margin-bottom: 0; display: inline-block; margin-left: 5px;
+        }
+        .subfolder-option { margin-top: 15px; }
+        hr {
+            border: none;
+            border-top: 1px solid #e5e5e5;
+            margin: 2rem 0;
         }
     </style>
 </head>
@@ -98,30 +113,51 @@
     <div id="upload-form">
         <p>授權成功！請選擇資料夾並上傳檔案。</p>
         
-        <label for="folder_select">選擇上傳資料夾：</label>
-        <select id="folder_select"></select>
+        <label for="main_folder_select">1. 選擇主資料夾：</label>
+        <select id="main_folder_select" onchange="fetchSubfolders()"></select>
         
+        <hr>
+
+        <label>2. 選擇照片資料夾：</label>
+        <div class="radio-group">
+            <input type="radio" id="mode_new" name="upload_mode" value="new" checked onchange="toggleMode()">
+            <label for="mode_new">建立新照片資料夾</label>
+            <br>
+            <input type="radio" id="mode_existing" name="upload_mode" value="existing" onchange="toggleMode()">
+            <label for="mode_existing">選擇現有照片資料夾</label>
+        </div>
+
+        <div id="new_subfolder_option" class="subfolder-option">
+            <label for="new_subfolder_name">新資料夾名稱：</label>
+            <input type="text" id="new_subfolder_name" placeholder="例如：活動照片">
+        </div>
+
+        <div id="existing_subfolder_option" class="subfolder-option" style="display: none;">
+            <label for="subfolder_select">選擇現有資料夾：</label>
+            <select id="subfolder_select"></select>
+        </div>
+        
+        <hr>
+
+        <label for="file_input">3. 選擇要上傳的照片：</label>
         <input type="file" id="file_input" multiple>
-        <button id="upload_button" onclick="handleFileUpload()">上傳</button>
+        <button id="upload_button" onclick="handleFileUpload()">開始上傳</button>
     </div>
 
     <div id="status"></div>
 </div>
 
-<!-- 載入 Google API 函式庫 -->
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script type="text/javascript">
     // =========================================================================
     // --- 請修改以下設定 ---
     // =========================================================================
-    // 從 Google Cloud Platform 複製的用戶端 ID
     const CLIENT_ID = '1003378114623-a8sf8d4bar0t8co3rk6nsm7oeu3p2nro.apps.googleusercontent.com'; 
-    
-    // **【重要修改】**
-    // 請在此處填入您 8 個資料夾的名稱與 ID
-    // "顯示在選單上的名稱": "從Google Drive網址複製的資料夾ID"
-    const FOLDERS = {
+    const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+    const MAIN_FOLDERS = {
         "2026年1月27日": "1Gn4O-CeLsH5l0Yg0_cq50E3f6ZPLAjbf",
         "2026年1月28日": "1G7di8fJeijwpEo1J-ODxKqqqp7ZQy07n",
         "2026年1月29日": "1KI1OxXRRBeUNCas3e87EcjcYFSmMF-CH",
@@ -133,48 +169,40 @@
     };
     // =========================================================================
 
-    const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-    
     let tokenClient;
-
-    const authButton = document.getElementById('authorize_button');
+    const authContainer = document.getElementById('auth-container');
     const uploadForm = document.getElementById('upload-form');
     const statusDiv = document.getElementById('status');
     const fileInput = document.getElementById('file_input');
-    const folderSelect = document.getElementById('folder_select');
+    const mainFolderSelect = document.getElementById('main_folder_select');
+    const subfolderSelect = document.getElementById('subfolder_select');
     
-    // 網頁載入後，初始化 Google API 用戶端並填入下拉選單
     window.onload = () => {
-        // 填入下拉選單選項
-        for (const name in FOLDERS) {
+        for (const name in MAIN_FOLDERS) {
             const option = document.createElement('option');
-            option.value = FOLDERS[name];
+            option.value = MAIN_FOLDERS[name];
             option.textContent = name;
-            folderSelect.appendChild(option);
+            mainFolderSelect.appendChild(option);
         }
-
-        gapi.load('client', async () => {
-            await gapi.client.init({});
-        });
-        
+        gapi.load('client', initializeGapiClient);
         tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            callback: '', 
+            client_id: CLIENT_ID, scope: SCOPES, callback: '', 
         });
     };
+    
+    async function initializeGapiClient() {
+        await gapi.client.init({});
+        await gapi.client.load(DISCOVERY_DOC);
+    }
 
-    // 點擊「授權」按鈕時
     function handleAuthClick() {
         tokenClient.callback = (resp) => {
-            if (resp.error !== undefined) {
-                throw (resp);
-            }
-            document.getElementById('auth-container').style.display = 'none';
+            if (resp.error !== undefined) { throw (resp); }
+            authContainer.classList.add('hidden');
             uploadForm.style.display = 'block';
-            statusDiv.innerText = '授權成功！';
+            statusDiv.innerText = '授權成功！正在讀取子資料夾...';
+            fetchSubfolders(); // 授權後立即獲取第一個主資料夾的子資料夾
         };
-
         if (gapi.client.getToken() === null) {
             tokenClient.requestAccessToken({prompt: 'consent'});
         } else {
@@ -182,34 +210,83 @@
         }
     }
 
-    // 點擊「上傳」按鈕時
+    async function fetchSubfolders() {
+        statusDiv.innerText = '正在讀取子資料夾列表...';
+        subfolderSelect.innerHTML = '<option>讀取中...</option>';
+        subfolderSelect.disabled = true;
+
+        const parentFolderId = mainFolderSelect.value;
+        try {
+            const response = await gapi.client.drive.files.list({
+                q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                fields: 'files(id, name)',
+                orderBy: 'name'
+            });
+
+            subfolderSelect.innerHTML = ''; // 清空
+            if (response.result.files && response.result.files.length > 0) {
+                response.result.files.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id;
+                    option.textContent = folder.name;
+                    subfolderSelect.appendChild(option);
+                });
+            } else {
+                 subfolderSelect.innerHTML = '<option value="">-- 沒有現有子資料夾 --</option>';
+            }
+            statusDiv.innerText = '子資料夾讀取完畢。';
+        } catch (error) {
+            statusDiv.innerText = `讀取子資料夾失敗: ${error.message}`;
+        } finally {
+            subfolderSelect.disabled = false;
+        }
+    }
+
+    function toggleMode() {
+        const mode = document.querySelector('input[name="upload_mode"]:checked').value;
+        document.getElementById('new_subfolder_option').style.display = (mode === 'new') ? 'block' : 'none';
+        document.getElementById('existing_subfolder_option').style.display = (mode === 'existing') ? 'block' : 'none';
+    }
+
+    async function createFolder(name, parentId) {
+        const response = await gapi.client.drive.files.create({
+            resource: { name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] },
+            fields: 'id'
+        });
+        return response.result.id;
+    }
+
     async function handleFileUpload() {
-        // **【重要修改】** 從下拉選單取得目標資料夾 ID
-        const selectedFolderId = folderSelect.value;
         const files = fileInput.files;
-
-        if (files.length === 0) {
-            statusDiv.innerText = '請先選擇檔案！';
-            return;
-        }
-        if (!selectedFolderId || selectedFolderId.startsWith("YOUR_FOLDER_ID")) {
-            statusDiv.innerText = '錯誤：請先在程式碼中設定有效的資料夾 ID！';
-            return;
-        }
-
-
+        if (files.length === 0) { statusDiv.innerText = '請先選擇檔案！'; return; }
+        
         statusDiv.innerHTML = ''; 
+        document.getElementById('upload_button').disabled = true;
+        
+        let targetFolderId = '';
+        const mode = document.querySelector('input[name="upload_mode"]:checked').value;
+
+        try {
+            if (mode === 'new') {
+                const newSubFolderName = document.getElementById('new_subfolder_name').value;
+                if (!newSubFolderName) throw new Error('新資料夾名稱不可為空。');
+                statusDiv.innerHTML = `正在建立新資料夾 "${newSubFolderName}"...<br>`;
+                targetFolderId = await createFolder(newSubFolderName, mainFolderSelect.value);
+                statusDiv.innerHTML += `資料夾建立成功！ID: ${targetFolderId}<br>`;
+            } else { // existing
+                targetFolderId = subfolderSelect.value;
+                if (!targetFolderId) throw new Error('請選擇一個現有的子資料夾。');
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `❌ 流程中止: ${error.message}`;
+            document.getElementById('upload_button').disabled = false;
+            return;
+        }
 
         for (const file of files) {
             try {
                 statusDiv.innerHTML += `正在上傳 ${file.name}... <br>`;
-                
-                const metadata = {
-                    name: file.name,
-                    // **【重要修改】** 使用選擇的資料夾 ID
-                    parents: [selectedFolderId] 
-                };
-
+                const metadata = { name: file.name, parents: [targetFolderId] };
                 const form = new FormData();
                 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                 form.append('file', file);
@@ -221,21 +298,20 @@
                 });
 
                 const result = await response.json();
-                
-                if (result.error) {
-                    throw new Error(result.error.message);
-                }
-                
+                if (result.error) throw new Error(result.error.message);
                 statusDiv.innerHTML += `✅ ${file.name} 上傳成功！<br>`;
-
             } catch (error) {
                 statusDiv.innerHTML += `❌ ${file.name} 上傳失敗: ${error.message} <br>`;
             }
         }
         fileInput.value = ''; 
+        document.getElementById('upload_button').disabled = false;
+        // Optionally, refresh subfolder list after creating a new one
+        if (mode === 'new') {
+             fetchSubfolders();
+        }
     }
 </script>
-
 </body>
 </html>
 
