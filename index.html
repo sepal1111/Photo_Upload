@@ -2,17 +2,87 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <!-- 關鍵修改 1：加入 viewport meta 標籤，讓網頁適應行動裝置 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drive API 上傳工具</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
-        .container { background-color: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); text-align: center; max-width: 500px; width: 90%; }
-        button { background-color: #0071e3; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 10px; }
-        button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
-        #upload-form { display: none; }
-        #status { margin-top: 20px; font-size: 14px; color: #606770; min-height: 20px; text-align: left; }
-        /* 新增下拉選單的樣式 */
-        label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
-        select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        /* 關鍵修改 2：全面優化 CSS 以適應手機瀏覽 */
+        * {
+            box-sizing: border-box; /* 統一元素的尺寸計算方式 */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 1rem; /* 在頁面周圍增加一些間距 */
+            background-color: #f0f2f5;
+            color: #1d1d1f;
+            line-height: 1.5;
+        }
+        .container {
+            background-color: #fff;
+            padding: 1.5rem; /* 調整內部間距，使其在手機上更緊湊 */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            margin: 0 auto; /* 水平置中 */
+        }
+        h1 {
+            font-size: 1.5rem; /* 調整標題字體大小 */
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: #6e6e73;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+        button {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 10px 0;
+            width: 100%; /* 讓按鈕變為全寬，方便觸控 */
+        }
+        button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+        #upload-form {
+            display: none;
+        }
+        #status {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #606770;
+            min-height: 20px;
+            text-align: left;
+            background-color: #f5f5f7;
+            padding: 0.8rem;
+            border-radius: 8px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            text-align: left;
+        }
+        select, input[type="file"] {
+            width: 100%;
+            padding: 12px; /* 增加內距，方便觸控 */
+            margin-bottom: 20px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #f5f5f7;
+        }
     </style>
 </head>
 <body>
@@ -28,7 +98,6 @@
     <div id="upload-form">
         <p>授權成功！請選擇資料夾並上傳檔案。</p>
         
-        <!-- 新增的下拉選單 -->
         <label for="folder_select">選擇上傳資料夾：</label>
         <select id="folder_select"></select>
         
