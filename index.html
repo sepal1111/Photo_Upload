@@ -136,8 +136,9 @@
     <div id="auth-container">
         <p>請先登入以使用上傳工具。</p>
         <!-- Google 登入按鈕的容器 -->
+        <!-- 【關鍵修改】直接將 CLIENT_ID 填入此處 -->
         <div id="g_id_onload"
-             data-client_id="YOUR_CLIENT_ID"
+             data-client_id="1003378114623-a8sf8d4bar0t8co3rk6nsm7oeu3p2nro.apps.googleusercontent.com"
              data-callback="handleCredentialResponse">
         </div>
         <div class="g_id_signin"
@@ -189,6 +190,7 @@
         <div id="status"></div>
     </div>
 </div>
+
 <script type="text/javascript">
     // =========================================================================
     // --- 請修改以下設定 ---
@@ -226,8 +228,7 @@
     }
 
     window.onload = () => {
-        // 在 g_id_onload div 中設定 client_id
-        document.getElementById('g_id_onload').dataset.clientId = CLIENT_ID;
+        // 【關鍵修改】移除動態設定 client_id 的程式碼
         for (const name in MAIN_FOLDERS) {
             const option = document.createElement('option');
             option.value = MAIN_FOLDERS[name];
