@@ -52,7 +52,29 @@
             background-color: #a0a0a0;
             cursor: not-allowed;
         }
-        #upload-form, #auth-container.hidden {
+        /* --- 新增的導覽樣式 --- */
+        .nav {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            background-color: #e5e5e5;
+            padding: 4px;
+        }
+        .nav-button {
+            flex: 1;
+            padding: 0.6rem;
+            margin: 0;
+            background-color: transparent;
+            color: #333;
+            font-weight: 500;
+        }
+        .nav-button.active {
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            color: #0071e3;
+        }
+        /* --- 視圖容器 --- */
+        #uploader-view, #browser-view, #auth-container.hidden {
             display: none;
         }
         #status {
@@ -98,21 +120,35 @@
             border-top: 1px solid #e5e5e5;
             margin: 2rem 0;
         }
+        /* --- 瀏覽器 Iframe 樣式 --- */
+        #drive-embed-iframe {
+            width: 100%;
+            height: 450px; /* 增加高度以便瀏覽 */
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Google Drive 上傳工具</h1>
+    <h1>Google Drive 管理工具</h1>
     
     <div id="auth-container">
         <p>請先授權存取您的 Google Drive。</p>
         <button id="authorize_button" onclick="handleAuthClick()">授權</button>
     </div>
 
-    <div id="upload-form">
-        <p>授權成功！請選擇資料夾並上傳檔案。</p>
-        
+    <!-- 新增的導覽列 -->
+    <div id="nav-container" style="display: none;">
+        <div class="nav">
+            <button id="nav-uploader" class="nav-button active" onclick="showView('uploader')">上傳工具</button>
+            <button id="nav-browser" class="nav-button" onclick="showView('browser')">瀏覽照片</button>
+        </div>
+    </div>
+    
+    <!-- 上傳工具視圖 -->
+    <div id="uploader-view">
         <label for="main_folder_select">1. 選擇主資料夾：</label>
         <select id="main_folder_select" onchange="fetchSubfolders()"></select>
         
@@ -144,6 +180,13 @@
         <button id="upload_button" onclick="handleFileUpload()">開始上傳</button>
     </div>
 
+    <!-- 新增的瀏覽器視圖 -->
+    <div id="browser-view">
+        <p>正在顯示資料夾：<strong id="current-folder-name"></strong></p>
+        <iframe id="drive-embed-iframe" src="" allow="fullscreen"></iframe>
+    </div>
+
+
     <div id="status"></div>
 </div>
 
@@ -171,7 +214,9 @@
 
     let tokenClient;
     const authContainer = document.getElementById('auth-container');
-    const uploadForm = document.getElementById('upload-form');
+    const uploaderView = document.getElementById('uploader-view');
+    const browserView = document.getElementById('browser-view');
+    const navContainer = document.getElementById('nav-container');
     const statusDiv = document.getElementById('status');
     const fileInput = document.getElementById('file_input');
     const mainFolderSelect = document.getElementById('main_folder_select');
@@ -188,6 +233,7 @@
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID, scope: SCOPES, callback: '', 
         });
+        showView('uploader'); // 確保預設顯示上傳視圖
     };
     
     async function initializeGapiClient() {
@@ -195,13 +241,31 @@
         await gapi.client.load(DISCOVERY_DOC);
     }
 
+    // --- 新增的視圖切換函式 ---
+    function showView(viewName) {
+        uploaderView.style.display = 'none';
+        browserView.style.display = 'none';
+        document.getElementById('nav-uploader').classList.remove('active');
+        document.getElementById('nav-browser').classList.remove('active');
+
+        if (viewName === 'uploader') {
+            uploaderView.style.display = 'block';
+            document.getElementById('nav-uploader').classList.add('active');
+        } else {
+            browserView.style.display = 'block';
+            document.getElementById('nav-browser').classList.add('active');
+        }
+    }
+
+
     function handleAuthClick() {
         tokenClient.callback = (resp) => {
             if (resp.error !== undefined) { throw (resp); }
-            authContainer.classList.add('hidden');
-            uploadForm.style.display = 'block';
+            authContainer.style.display = 'none';
+            navContainer.style.display = 'block';
+            showView('uploader');
             statusDiv.innerText = '授權成功！正在讀取子資料夾...';
-            fetchSubfolders(); // 授權後立即獲取第一個主資料夾的子資料夾
+            fetchSubfolders();
         };
         if (gapi.client.getToken() === null) {
             tokenClient.requestAccessToken({prompt: 'consent'});
@@ -216,6 +280,12 @@
         subfolderSelect.disabled = true;
 
         const parentFolderId = mainFolderSelect.value;
+        const parentFolderName = mainFolderSelect.options[mainFolderSelect.selectedIndex].text;
+
+        // --- 同步更新瀏覽器視圖 ---
+        document.getElementById('drive-embed-iframe').src = `https://drive.google.com/embeddedfolderview?id=${parentFolderId}#list`;
+        document.getElementById('current-folder-name').textContent = parentFolderName;
+
         try {
             const response = await gapi.client.drive.files.list({
                 q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
@@ -223,7 +293,7 @@
                 orderBy: 'name'
             });
 
-            subfolderSelect.innerHTML = ''; // 清空
+            subfolderSelect.innerHTML = ''; 
             if (response.result.files && response.result.files.length > 0) {
                 response.result.files.forEach(folder => {
                     const option = document.createElement('option');
@@ -306,12 +376,12 @@
         }
         fileInput.value = ''; 
         document.getElementById('upload_button').disabled = false;
-        // Optionally, refresh subfolder list after creating a new one
         if (mode === 'new') {
              fetchSubfolders();
         }
     }
 </script>
+
 </body>
 </html>
 
