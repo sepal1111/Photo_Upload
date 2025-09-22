@@ -233,7 +233,7 @@
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID, scope: SCOPES, callback: '', 
         });
-        showView('uploader'); // 確保預設顯示上傳視圖
+        // 【關鍵修改】移除此處的 showView('uploader');
     };
     
     async function initializeGapiClient() {
@@ -263,7 +263,7 @@
             if (resp.error !== undefined) { throw (resp); }
             authContainer.style.display = 'none';
             navContainer.style.display = 'block';
-            showView('uploader');
+            showView('uploader'); // 授權成功後，才顯示上傳工具
             statusDiv.innerText = '授權成功！正在讀取子資料夾...';
             fetchSubfolders();
         };
@@ -355,6 +355,22 @@
 
         for (const file of files) {
             try {
+                // --- 【關鍵修改】---
+                // 1. 檢查檔案是否存在
+                statusDiv.innerHTML += `正在檢查檔案 ${file.name}... <br>`;
+                const searchResponse = await gapi.client.drive.files.list({
+                    q: `'${targetFolderId}' in parents and name = '${file.name}' and trashed = false`,
+                    fields: 'files(id)',
+                    pageSize: 1
+                });
+
+                // 2. 如果檔案存在，則跳過
+                if (searchResponse.result.files && searchResponse.result.files.length > 0) {
+                    statusDiv.innerHTML += `🟡 ${file.name} 已存在，跳過上傳。<br>`;
+                    continue; // 進行迴圈的下一次迭代
+                }
+                // --- 【修改結束】---
+
                 statusDiv.innerHTML += `正在上傳 ${file.name}... <br>`;
                 const metadata = { name: file.name, parents: [targetFolderId] };
                 const form = new FormData();
