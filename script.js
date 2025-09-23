@@ -1,12 +1,21 @@
-// --- 請修改以下四個變數 ---
-const API_KEY = 'AIzaSyCxXx4cA4VkrczCqUZinzq4qSLDPtylmY0'; // 暂时用不到，但建议保留
-const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com'; // 來自 Google Cloud Console
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwNgjSgyMGKe0l0tDU5c8T7ubpQnftYS_MGhgqDJJ2zm92cu2hLLkEXY6s4GnDKKX1E/exec'; // 來自 Apps Script 部署
-const ROOT_FOLDER_ID = '1yR8pE1Pz7hNwJ9d-srxwrE6zsjh_GsHY'; // 你的 Google Drive 根資料夾 ID
-// --- 修改結束 ---
+// --- 步驟一：請務必將以下四個變數替換成您自己的資訊 ---
+// 來源：Google Cloud Console -> API 和服務 -> 憑證 -> API 金鑰
+const API_KEY = 'AIzaSyCxXx4cA4VkrczCqUZinzq4qSLDPtylmY0';
 
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+// 來源：Google Cloud Console -> API 和服務 -> 憑證 -> OAuth 2.0 用戶端 ID
+const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com';
 
+// 來源：Google Apps Script 部署後的網路應用程式網址
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxky0kheWf2COMntLcydmH3of_10V14QyfcWqRGTkeH2aGtGFDKRLmvylFXn14wxnAl/exec';
+
+// 來源：您在 Google Drive 建立的主資料夾網址最後那串 ID
+const ROOT_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
+// --- 設定結束 ---
+
+// 授權範圍：允許應用程式完整存取使用者的 Google Drive
+const SCOPES = 'https://www.googleapis.com/auth/drive';
+
+// --- 全域變數與 DOM 元素 ---
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
@@ -24,98 +33,101 @@ const uploadButton = document.getElementById('upload-button');
 const statusDiv = document.getElementById('status');
 const currentFolderNameSpan = document.getElementById('current-folder-name');
 
-// 當 GAPI Client 載入完成時觸發
+// --- 初始化函式 ---
+
+// 當 GAPI (Google API) Client 程式庫載入完成時觸發
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
 }
 
-// 當 Google Sign-In (GIS) 載入完成時觸發
+// 當 GIS (Google Identity Services) 程式庫載入完成時觸發
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
-        callback: '', // 會在請求時動態設定
+        callback: '', // 會在請求時動態設定回呼函式
     });
     gisInited = true;
-    maybeEnableButtons();
+    checkReadyState();
 }
 
+// 初始化 GAPI Client
 async function initializeGapiClient() {
     await gapi.client.init({
-        // API Key 暫時不需要，因為所有操作都透過 OAuth 進行
-        // apiKey: API_KEY, 
+        apiKey: API_KEY,
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
     });
     gapiInited = true;
-    maybeEnableButtons();
+    checkReadyState();
 }
 
-function maybeEnableButtons() {
+// 檢查兩個程式庫是否都已載入完成，若完成則啟用登入按鈕
+function checkReadyState() {
     if (gapiInited && gisInited) {
         authorizeButton.disabled = false;
     }
 }
 
-authorizeButton.onclick = handleAuthClick;
-signoutButton.onclick = handleSignoutClick;
 
-function handleAuthClick() {
+// --- 授權與登入/登出處理 ---
+
+// 處理點擊登入按鈕的事件
+authorizeButton.onclick = function handleAuthClick() {
     tokenClient.callback = async (resp) => {
         if (resp.error !== undefined) {
             throw (resp);
         }
-        // 登入成功
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('upload-form').style.display = 'block';
+        // 登入成功，切換 UI 顯示
         signoutButton.style.display = 'block';
-        await testDriveConnection(); 
+        uploadForm.style.display = 'block';
+        authorizeButton.style.display = 'none';
+        
         // 載入資料夾列表
+        statusDiv.textContent = '登入成功！正在讀取相簿列表...';
         await listFolders();
     };
 
+    // 如果 gapi.client 中沒有 token，則請求新的；否則刷新現有的 token
     if (gapi.client.getToken() === null) {
         tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
         tokenClient.requestAccessToken({ prompt: '' });
     }
-}
+};
 
-function handleSignoutClick() {
+// 處理點擊登出按鈕的事件
+signoutButton.onclick = function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
-        google.accounts.oauth2.revoke(token.access_token);
-        gapi.client.setToken('');
-        document.getElementById('auth-container').style.display = 'block';
-        document.getElementById('upload-form').style.display = 'none';
-        signoutButton.style.display = 'none';
-        statusDiv.textContent = '您已登出。';
-        fileInput.value = '';
-        folderSelect.innerHTML = '';
-        selectedFolderId = null;
-        updateUploadButtonStatus();
+        google.accounts.oauth2.revoke(token.access_token, () => {
+            gapi.client.setToken('');
+            // 切換 UI 顯示
+            authorizeButton.style.display = 'block';
+            signoutButton.style.display = 'none';
+            uploadForm.style.display = 'none';
+            // 重設狀態
+            statusDiv.textContent = '您已成功登出。';
+            fileInput.value = '';
+            folderSelect.innerHTML = '';
+            selectedFolderId = null;
+            updateUploadButtonStatus();
+        });
     }
-}
+};
+
+
+// --- Google Drive API 互動函式 ---
 
 // 列出根目錄下的子資料夾
 async function listFolders() {
     statusDiv.textContent = '正在讀取相簿列表...';
-    folderSelect.innerHTML = '<option value="">請選擇一個相簿...</option>';
+    folderSelect.innerHTML = '<option value="">請選擇或建立一個相簿...</option>';
     try {
         const response = await gapi.client.drive.files.list({
-            // --- 👇 請修改這裡 ---
-
-            // 1. 在原本這一行的最前面加上斜線，把它變成註解
-            // q: `'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-
-            // 2. 換成下面這一行，讓它去讀取您雲端硬碟的「最上層」
-            q: "'root' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
-
-            // --- 👆 修改結束 ---
-
+            q: `'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
             fields: 'files(id, name)',
             orderBy: 'name',
         });
-
         const folders = response.result.files;
         if (folders && folders.length > 0) {
             folders.forEach(folder => {
@@ -124,29 +136,15 @@ async function listFolders() {
                 option.textContent = folder.name;
                 folderSelect.appendChild(option);
             });
+            statusDiv.textContent = '相簿列表讀取完成，請選擇相簿以上傳照片。';
+        } else {
+            statusDiv.textContent = '根目錄中沒有找到任何相簿，請建立一個新的。';
         }
-        statusDiv.textContent = '相簿列表讀取完成。';
     } catch (err) {
-    console.error("讀取資料夾時發生錯誤:", err); // 在主控台印出完整錯誤物件
-    const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
-    statusDiv.textContent = `讀取相簿失敗: ${errorDetails}`;
+        console.error("讀取資料夾時發生錯誤:", err);
+        const errorDetails = err.result ? err.result.error.message : '請檢查瀏覽器主控台以獲取詳細資訊。';
+        statusDiv.textContent = `讀取相簿失敗: ${errorDetails}`;
     }
-}
-
-refreshFoldersBtn.onclick = listFolders;
-
-async function testDriveConnection() {
-  try {
-    console.log("正在執行連線測試 (drive.about.get)...");
-    const response = await gapi.client.drive.about.get({
-      fields: 'user'
-    });
-    console.log("✅ 連線測試成功！目前登入的使用者是:", response.result.user);
-    alert(`連線測試成功！\n登入者: ${response.result.user.emailAddress}`);
-  } catch (err) {
-    console.error("❌ 連線測試失敗:", err);
-    alert("連線測試失敗，請查看主控台的錯誤訊息。");
-  }
 }
 
 // 建立新資料夾
@@ -156,7 +154,6 @@ createFolderBtn.onclick = async () => {
         alert('請輸入新相簿的名稱！');
         return;
     }
-    // 關閉按鈕，防止重複點擊
     createFolderBtn.disabled = true;
     statusDiv.textContent = `正在建立相簿 "${folderName}"...`;
     
@@ -171,55 +168,24 @@ createFolderBtn.onclick = async () => {
         });
         const newFolder = response.result;
         statusDiv.textContent = `✅ 相簿 "${newFolder.name}" 建立成功！`;
-        newFolderNameInput.value = '';
-
-        // --- 👇 新增的關鍵程式碼開始 ---
-        // 無論是誰建立了資料夾，都立刻呼叫 Apps Script 將擁有權轉移給您
-        // 我們可以完美重用處理檔案的 changeOwner 函式
-        await changeOwner(newFolder.id, newFolder.name + " (資料夾)");
-        // --- 👆 新增的關鍵程式碼結束 ---
-
-        // 在擁有權轉移後，再重新整理列表，確保能看到最新的狀態
-        await listFolders();
         
-        // 自動選擇剛剛建立的資料夾
+        // 將新建立的資料夾擁有權轉移給您自己
+        await changeOwner(newFolder.id, `資料夾 "${newFolder.name}"`);
+
+        // 刷新列表並自動選中
+        await listFolders();
         folderSelect.value = newFolder.id;
         updateSelectedFolder();
+        newFolderNameInput.value = '';
 
     } catch (err) {
         console.error("建立資料夾時發生錯誤:", err);
-        const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
+        const errorDetails = err.result ? err.result.error.message : '請檢查主控台。';
         statusDiv.textContent = `建立相簿失敗: ${errorDetails}`;
     } finally {
-        // 無論成功或失敗，都重新啟用按鈕
         createFolderBtn.disabled = false;
     }
 };
-
-folderSelect.onchange = updateSelectedFolder;
-
-function updateSelectedFolder() {
-    selectedFolderId = folderSelect.value;
-    if (selectedFolderId) {
-        const selectedOption = folderSelect.options[folderSelect.selectedIndex];
-        currentFolderNameSpan.textContent = selectedOption.textContent;
-    } else {
-        currentFolderNameSpan.textContent = '尚未選擇';
-    }
-    updateUploadButtonStatus();
-}
-
-fileInput.onchange = updateUploadButtonStatus;
-
-function updateUploadButtonStatus() {
-    if (selectedFolderId && fileInput.files.length > 0) {
-        uploadButton.disabled = false;
-        fileInput.disabled = false;
-    } else {
-        uploadButton.disabled = true;
-        fileInput.disabled = !selectedFolderId;
-    }
-}
 
 // 上傳檔案
 uploadButton.onclick = async () => {
@@ -228,11 +194,6 @@ uploadButton.onclick = async () => {
         alert('請選擇要上傳的檔案！');
         return;
     }
-    if (!selectedFolderId) {
-        alert('請先選擇一個相簿！');
-        return;
-    }
-
     uploadButton.disabled = true;
     statusDiv.innerHTML = '';
 
@@ -246,56 +207,88 @@ uploadButton.onclick = async () => {
         formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         formData.append('file', file);
 
-        statusDiv.innerHTML += `正在上傳 ${file.name}...<br>`;
+        statusDiv.innerHTML += `[${i+1}/${files.length}] 正在上傳 ${file.name}...\n`;
 
         try {
-            // 使用 Fetch API 直接上傳，這樣可以處理大檔案
             const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                 method: 'POST',
                 headers: new Headers({ 'Authorization': `Bearer ${gapi.client.getToken().access_token}` }),
                 body: formData,
             });
             const result = await response.json();
-
-            if (result.error) {
-                throw new Error(result.error.message);
-            }
-
-            statusDiv.innerHTML += `✅ ${file.name} 上傳成功！File ID: ${result.id}<br>`;
-
-            // 觸發 Apps Script 轉移擁有者
+            
+            if (result.error) throw new Error(result.error.message);
+            
+            statusDiv.innerHTML += `  -> ✅ 上傳成功！\n`;
             await changeOwner(result.id, file.name);
 
         } catch (err) {
             console.error(err);
-            statusDiv.innerHTML += `❌ ${file.name} 上傳失敗: ${err.message}<br>`;
+            statusDiv.innerHTML += `  -> ❌ 上傳失敗: ${err.message}\n`;
         }
     }
-
-    fileInput.value = ''; // 清空選擇的檔案
+    
+    statusDiv.innerHTML += '\n------ 所有檔案處理完畢 ------';
+    fileInput.value = ''; 
     uploadButton.disabled = false;
+    updateUploadButtonStatus();
 };
 
-// 呼叫 Apps Script Web App 來轉移擁有者
-async function changeOwner(fileId, fileName) {
-    statusDiv.innerHTML += `正在轉移 ${fileName} 的擁有權...<br>`;
+
+// --- 後端 Apps Script 互動 ---
+
+// 呼叫 Apps Script Web App 來轉移檔案或資料夾的擁有者
+async function changeOwner(id, name) {
+    statusDiv.innerHTML += `  -> 正在轉移 ${name} 的擁有權...`;
     try {
         const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
-            mode: 'cors', // 必須設定為 cors
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ fileId: fileId }),
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileId: id }),
+            redirect: "follow"
         });
+        
+        if (!response.ok) {
+            throw new Error(`伺服器回應錯誤: ${response.statusText}`);
+        }
+
         const result = await response.json();
         if (result.status === 'success') {
-            statusDiv.innerHTML += `🎉 ${fileName} 的擁有權已成功轉移！<br><hr>`;
+            statusDiv.innerHTML += ` ✅ 成功！\n`;
         } else {
             throw new Error(result.message);
         }
     } catch (err) {
-        console.error(err);
-        statusDiv.innerHTML += `⚠️ 轉移 ${fileName} 的擁有權失敗: ${err.message}<br><hr>`;
+        console.error("轉移擁有權時發生錯誤:", err);
+        statusDiv.innerHTML += ` ❌ 失敗: ${err.message}\n`;
     }
+}
+
+
+// --- UI 更新與事件監聽 ---
+
+refreshFoldersBtn.onclick = listFolders;
+folderSelect.onchange = updateSelectedFolder;
+fileInput.onchange = updateUploadButtonStatus;
+
+// 當選擇的資料夾變更時，更新 UI
+function updateSelectedFolder() {
+    selectedFolderId = folderSelect.value;
+    if (selectedFolderId) {
+        const selectedOption = folderSelect.options[folderSelect.selectedIndex];
+        currentFolderNameSpan.textContent = selectedOption.textContent;
+    } else {
+        currentFolderNameSpan.textContent = '尚未選擇';
+    }
+    updateUploadButtonStatus();
+}
+
+// 根據是否已選擇資料夾和檔案，更新上傳按鈕的狀態
+function updateUploadButtonStatus() {
+    const folderIsSelected = !!selectedFolderId;
+    const filesAreSelected = fileInput.files.length > 0;
+    
+    fileInput.disabled = !folderIsSelected;
+    uploadButton.disabled = !(folderIsSelected && filesAreSelected);
 }
