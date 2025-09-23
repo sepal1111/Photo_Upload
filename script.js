@@ -102,7 +102,16 @@ async function listFolders() {
     folderSelect.innerHTML = '<option value="">請選擇一個相簿...</option>';
     try {
         const response = await gapi.client.drive.files.list({
-            q: `'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            // --- 👇 請修改這裡 ---
+
+            // 將原本這一行註解掉 (在前面加上 //)
+            // q: `'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+
+            // 暫時換成下面這一行來測試
+            q: "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false",
+            
+            // --- 👆 修改結束 ---
+
             fields: 'files(id, name)',
             orderBy: 'name',
         });
