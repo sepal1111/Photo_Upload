@@ -1,47 +1,78 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家人旅遊照片上傳</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家人旅遊照片上傳</title>
+<style>
+body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; }
+input, select, button { margin: 5px 0; display: block; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>家人旅遊照片上傳</h1>
-        <p>請先登入您的 Google 帳號，然後選擇或建立相簿資料夾來上傳照片。</p>
+<h2>家人旅遊照片上傳</h2>
 
-        <div id="auth-container">
-            <button id="authorize_button">登入 Google 帳號並授權</button>
-            <button id="signout_button" style="display: none;">登出</button>
-        </div>
+<label>選擇子資料夾：
+<select id="folderName">
+  <option value="">根資料夾</option>
+  <option value="海邊">海邊</option>
+  <option value="山區">山區</option>
+</select>
+</label>
 
-        <div id="upload-form" style="display: none;">
-            <hr>
-            <h2>選擇或建立相簿</h2>
-            <div class="folder-selection">
-                <label for="folder-select">選擇現有相簿：</label>
-                <select id="folder-select"></select>
-                <button id="refresh-folders">重新整理</button>
-            </div>
-            <div class="folder-creation">
-                <label for="new-folder-name">或建立新相簿：</label>
-                <input type="text" id="new-folder-name" placeholder="例如：2025 東京之旅">
-                <button id="create-folder-btn">建立</button>
-            </div>
+<label>或建立新資料夾：
+<input type="text" id="newFolderName" placeholder="輸入新資料夾名稱">
+</label>
 
-            <hr>
-            <h2>上傳照片</h2>
-            <p>目前選擇的相簿：<strong id="current-folder-name">尚未選擇</strong></p>
-            <input type="file" id="file-input" multiple disabled>
-            <button id="upload-button" disabled>開始上傳</button>
+<label>選擇照片（可多檔）：
+<input type="file" id="files" multiple>
+</label>
 
-            <div id="status"></div>
-        </div>
-    </div>
+<button id="uploadBtn">上傳照片</button>
 
-    <script src="script.js"></script>
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<div id="result"></div>
+
+<script>
+const uploadBtn = document.getElementById("uploadBtn");
+const resultDiv = document.getElementById("result");
+
+uploadBtn.addEventListener("click", async () => {
+  const folderName = document.getElementById("folderName").value;
+  const newFolderName = document.getElementById("newFolderName").value;
+  const files = document.getElementById("files").files;
+
+  if (!files.length) {
+    alert("請選擇至少一個檔案");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("folderName", folderName);
+  formData.append("newFolderName", newFolderName);
+
+  for (let i = 0; i < files.length; i++) {
+    formData.append("files[]", files[i]);
+  }
+
+  resultDiv.innerText = "上傳中...";
+
+  try {
+    const response = await fetch("https://script.google.com/macros/s/AKfycbyraNY6EO7oV92k4uoc07uo_1Tur1U8ZyCEkIbem_V9enolua8Lrsw9Qeg3H7ofthCF/exec", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      resultDiv.innerText = "上傳成功:\n" + data.uploaded.join("\n");
+    } else {
+      resultDiv.innerText = "上傳失敗: " + data.message;
+    }
+  } catch (err) {
+    resultDiv.innerText = "上傳出錯: " + err.message;
+  }
+});
+</script>
+
 </body>
 </html>
