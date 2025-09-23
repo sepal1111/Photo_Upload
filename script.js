@@ -117,8 +117,9 @@ async function listFolders() {
         }
         statusDiv.textContent = '相簿列表讀取完成。';
     } catch (err) {
-        console.error(err);
-        statusDiv.textContent = `讀取相簿失敗: ${err.message}`;
+    console.error("讀取資料夾時發生錯誤:", err); // 在主控台印出完整錯誤物件
+    const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
+    statusDiv.textContent = `讀取相簿失敗: ${errorDetails}`;
     }
 }
 
@@ -149,8 +150,9 @@ createFolderBtn.onclick = async () => {
         folderSelect.value = newFolder.id;
         updateSelectedFolder();
     } catch (err) {
-        console.error(err);
-        statusDiv.textContent = `建立相簿失敗: ${err.message}`;
+    console.error("建立資料夾時發生錯誤:", err); // 在主控台印出完整錯誤物件
+    const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
+    statusDiv.textContent = `建立相簿失敗: ${errorDetails}`;
     }
 };
 
