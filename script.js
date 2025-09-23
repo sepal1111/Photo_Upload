@@ -20,14 +20,14 @@ const fileList = document.getElementById('file-list');
 const uploadButton = document.getElementById('upload-button');
 
 /**
- * 當 Google API Client 函式庫載入完成時會被呼叫
+ * 當 Google API Client 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
  */
 function gapiLoaded() {
   gapi.load('client', initializeGapiClient);
 }
 
 /**
- * 當 Google Identity Services (GIS) 函式庫載入完成時會被呼叫
+ * 當 Google Identity Services (GIS) 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
  */
 function gisLoaded() {
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -64,6 +64,13 @@ function maybeEnableButtons() {
  * 處理授權按鈕的點擊事件
  */
 function handleAuthClick() {
+  // 安全檢查：確保 tokenClient 已被初始化
+  if (!tokenClient) {
+      console.error("Auth client is not ready yet.");
+      alert("頁面正在初始化，請稍候再試...");
+      return;
+  }
+
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
       throw (resp);
@@ -191,7 +198,7 @@ function uploadFiles() {
         
         // 使用 multipart upload 格式
         const boundary = '-------314159265358979323846';
-        const delimiter = "\r\n--" + boundary + "\r\n";
+        const delimiter = "\r\n--" + boundary + "\r_n";
         const close_delim = "\r\n--" + boundary + "--";
         
         const contentType = file.type || 'application/octet-stream';
@@ -253,12 +260,3 @@ authorizeButton.onclick = handleAuthClick;
 signoutButton.onclick = handleSignoutClick;
 document.getElementById('create-folder-button').onclick = createFolder;
 uploadButton.onclick = uploadFiles;
-
-
-// --- 動態載入 Google 的 JS 函式庫 ---
-// 這是為了確保在執行我們的程式碼前，Google 的函式庫已經準備就緒
-// 我們將 gapiLoaded 和 gisLoaded 函式掛載到 window 物件上，
-// 這樣 Google 的 script 載入後就能呼叫它們。
-
-window.gapiLoaded = gapiLoaded;
-window.gisLoaded = gisLoaded;
