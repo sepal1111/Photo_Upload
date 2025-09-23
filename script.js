@@ -4,7 +4,7 @@ const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU';
 const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
 
 // --- 全域變數與 DOM 元素 ---
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly'; // *** 修改這裡：新增權限 ***
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly';
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
@@ -93,21 +93,14 @@ function handleSignoutClick() {
   const token = gapi.client.getToken();
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token);
-    gapi.client.setToken('');
-    // 登出後重置 UI，並顯示載入提示等待重新初始化
+    gapi.client.setToken(null);
+    // 登出後重置 UI
     signoutButton.classList.add('hidden');
     step1Auth.classList.remove('hidden');
     step2Upload.classList.add('hidden');
     step3Status.classList.add('hidden');
     fileList.innerHTML = '';
     uploadButton.disabled = true;
-
-    authorizeButton.disabled = true;
-    loader.classList.remove('hidden');
-    // 重新初始化，以備下次登入
-    gapiInited = gisInited = false;
-    gisLoaded();
-    gapiLoaded();
   }
 }
 
@@ -270,10 +263,11 @@ function uploadFiles() {
 // 監聽檔案選擇的變化
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
-        fileList.innerHTML = ''; // 清空舊列表
-        for (const file of files) {
-            fileList.innerHTML += `<p><i class="fa-solid fa-image"></i> ${file.name}</p>`;
+        const fileItems = [];
+        for (const file of fileInput.files) {
+            fileItems.push(`<p><i class="fa-solid fa-image"></i> ${file.name}</p>`);
         }
+        fileList.innerHTML = fileItems.join('');
         uploadButton.disabled = false; // 啟用上傳按鈕
     } else {
         fileList.innerHTML = '';
@@ -286,4 +280,3 @@ authorizeButton.onclick = handleAuthClick;
 signoutButton.onclick = handleSignoutClick;
 document.getElementById('create-folder-button').onclick = createFolder;
 uploadButton.onclick = uploadFiles;
-
