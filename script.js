@@ -3,6 +3,7 @@ const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleuser
 const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU'; 
 const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
 
+
 // --- 全域變數與 DOM 元素 ---
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let tokenClient;
@@ -18,6 +19,7 @@ const step3Status = document.getElementById('step-3-status');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const uploadButton = document.getElementById('upload-button');
+const loader = document.getElementById('loader'); // *** 新增 loader 元素 ***
 
 /**
  * 當 Google API Client 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
@@ -52,11 +54,13 @@ async function initializeGapiClient() {
 }
 
 /**
- * 確保 GAPI 和 GIS 都初始化後，才顯示登入按鈕
+ * 確保 GAPI 和 GIS 都初始化後，才啟用登入按鈕並隱藏載入提示
  */
 function maybeEnableButtons() {
+  // *** 修改這裡的邏輯 ***
   if (gapiInited && gisInited) {
-    authorizeButton.style.visibility = 'visible';
+    loader.classList.add('hidden'); // 隱藏載入提示
+    authorizeButton.disabled = false; // 啟用按鈕
   }
 }
 
@@ -64,13 +68,7 @@ function maybeEnableButtons() {
  * 處理授權按鈕的點擊事件
  */
 function handleAuthClick() {
-  // 安全檢查：確保 tokenClient 已被初始化
-  if (!tokenClient) {
-      console.error("Auth client is not ready yet.");
-      alert("頁面正在初始化，請稍候再試...");
-      return;
-  }
-
+  // *** 移除這裡的舊安全檢查，因為按鈕在未就緒前是禁用的 ***
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
       throw (resp);
@@ -99,13 +97,21 @@ function handleSignoutClick() {
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken('');
-    // 登出後重置 UI
+    // 登出後重置 UI，並顯示載入提示等待重新初始化
     signoutButton.classList.add('hidden');
     step1Auth.classList.remove('hidden');
     step2Upload.classList.add('hidden');
     step3Status.classList.add('hidden');
     fileList.innerHTML = '';
     uploadButton.disabled = true;
+
+    // *** 新增這裡：登出後重置按鈕狀態 ***
+    authorizeButton.disabled = true;
+    loader.classList.remove('hidden');
+    // 重新初始化，以備下次登入
+    gapiInited = gisInited = false;
+    gisLoaded();
+    gapiLoaded();
   }
 }
 
@@ -122,6 +128,7 @@ async function listFolders() {
     const folderSelect = document.getElementById('folder-select');
     folderSelect.innerHTML = ''; // 清空舊選項
     if (folders && folders.length > 0) {
+      folderSelect.disabled = false;
       folders.forEach(folder => {
         const option = document.createElement('option');
         option.value = folder.id;
@@ -131,7 +138,7 @@ async function listFolders() {
     } else {
         const option = document.createElement('option');
         option.text = '沒有可用的子相簿';
-        option.disabled = true;
+        folderSelect.disabled = true;
         folderSelect.appendChild(option);
     }
   } catch (err) {
@@ -231,9 +238,14 @@ function uploadFiles() {
             'body': multipartRequestBody
         });
         
-        request.execute(function(file) {
-            console.log(file);
-            uploadStatus.innerHTML += `<p class="status-success"><i class="fa-solid fa-check-circle"></i> ${file.name} 上傳成功！</p>`;
+        request.execute(function(file, rawResponse) {
+            if (!file || file.error) {
+                console.error("上傳失敗:", file.error, rawResponse);
+                uploadStatus.innerHTML += `<p class="status-error"><i class="fa-solid fa-times-circle"></i> ${metadata.name} 上傳失敗。</p>`;
+            } else {
+                console.log(file);
+                uploadStatus.innerHTML += `<p class="status-success"><i class="fa-solid fa-check-circle"></i> ${file.name} 上傳成功！</p>`;
+            }
         });
     };
   }
@@ -260,3 +272,4 @@ authorizeButton.onclick = handleAuthClick;
 signoutButton.onclick = handleSignoutClick;
 document.getElementById('create-folder-button').onclick = createFolder;
 uploadButton.onclick = uploadFiles;
+
