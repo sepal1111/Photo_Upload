@@ -5,105 +5,126 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>家庭旅遊相簿</title>
     
-    <!-- Google Fonts - 一個好看的免費字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome - 免費圖示庫 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Google Identity Services (GIS) Script -->
     <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
     <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
 </head>
 <body>
 
-    <header class="main-header">
-        <i class="fa-solid fa-camera-retro"></i>
-        <h1>家庭旅遊相簿</h1>
-        <button id="signout_button" class="hidden">
-            <i class="fa-solid fa-right-from-bracket"></i> 登出
-        </button>
-    </header>
-
-    <main class="container">
-        <!-- 步驟一：授權 -->
-        <div id="step-1-auth" class="step-card">
-            <h2><i class="fa-brands fa-google"></i> 步驟一：連結雲端硬碟</h2>
-            <p>請先登入您的 Google 帳號，以授權應用程式存取雲端硬碟。</p>
-            <button id="authorize_button" class="btn btn-primary" disabled>
-                <i class="fa-brands fa-google"></i> 連結 Google 帳號
+    <!-- 新的首頁畫面 -->
+    <div id="home-screen">
+        <header class="home-header">
+            <i class="fa-solid fa-plane-departure"></i>
+            <h1>家庭旅遊中心</h1>
+            <p>行程規劃與照片回憶錄</p>
+        </header>
+        <main class="home-buttons">
+            <a href="Kyoto2026.html" class="home-btn">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <span>瀏覽旅遊行程</span>
+                <small>查看最新的京都之旅計畫</small>
+            </a>
+            <button id="go-to-upload-btn" class="home-btn">
+                <i class="fa-solid fa-cloud-upload"></i>
+                <span>照片上傳與瀏覽</span>
+                <small>管理雲端硬碟中的相簿</small>
             </button>
-            <div id="loader" class="loader">
-                <i class="fa-solid fa-spinner fa-spin"></i> 正在與 Google 同步...
-            </div>
-        </div>
+        </main>
+    </div>
 
-        <!-- 步驟二：上傳 -->
-        <div id="step-2-upload" class="step-card hidden">
-            <h2><i class="fa-solid fa-folder-tree"></i> 步驟二：選擇目的地</h2>
-            <div class="form-group">
-                <label for="folder-select">選擇現有旅遊相簿</label>
-                <div class="input-with-button">
-                    <select id="folder-select"></select>
-                    <button id="browse-button" class="btn btn-secondary">
-                        <i class="fa-solid fa-images"></i> 瀏覽
-                    </button>
-                </div>
+    <!-- 應用程式主體 (預設隱藏) -->
+    <div id="app-body" class="hidden">
+        <header class="main-header">
+            <button id="back-to-home-btn" class="header-btn"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="header-title">
+                <i class="fa-solid fa-camera-retro"></i>
+                <h1>家庭旅遊相簿</h1>
             </div>
-            <div class="form-group">
-                <label for="new-folder-name">或建立新的旅遊相簿</label>
-                <div class="input-with-button">
-                    <input type="text" id="new-folder-name" placeholder="例如：2025 東京之旅">
-                    <button id="create-folder-button" class="btn btn-secondary">
-                        <i class="fa-solid fa-plus"></i> 建立
-                    </button>
-                </div>
-            </div>
-            
-            <hr>
-
-            <h2><i class="fa-solid fa-images"></i> 步驟三：選擇照片</h2>
-            <div class="form-group">
-                <label for="file-input" class="file-input-label">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <span>點擊選擇照片 (可多選)</span>
-                </label>
-                <input type="file" id="file-input" multiple accept="image/*,video/*">
-                <div id="file-list" class="file-list-container"></div>
-            </div>
-            
-            <button id="upload-button" class="btn btn-primary btn-large" disabled>
-                <i class="fa-solid fa-rocket"></i> 開始上傳
+            <button id="signout_button" class="header-btn hidden">
+                <i class="fa-solid fa-right-from-bracket"></i>
             </button>
-        </div>
+        </header>
 
-        <!-- 步驟三：上傳狀態 -->
-        <div id="step-3-status" class="step-card hidden">
-            <h2><i class="fa-solid fa-spinner fa-spin"></i> 上傳進度</h2>
-            <div id="upload-status"></div>
-        </div>
-        
-        <!-- 新增步驟四：照片瀏覽 -->
-        <div id="step-4-viewer" class="step-card hidden">
-            <div class="viewer-header">
-                <button id="back-to-upload-button" class="btn btn-secondary">
-                    <i class="fa-solid fa-arrow-left"></i> 返回
+        <main class="container">
+            <!-- 步驟一：授權 -->
+            <div id="step-1-auth" class="step-card">
+                <h2><i class="fa-brands fa-google"></i> 步驟一：連結雲端硬碟</h2>
+                <p>請先登入您的 Google 帳號，以授權應用程式存取雲端硬碟。</p>
+                <button id="authorize_button" class="btn btn-primary" disabled>
+                    <i class="fa-brands fa-google"></i> 連結 Google 帳號
                 </button>
-                <h2>相簿內容</h2>
+                <div id="loader" class="loader">
+                    <i class="fa-solid fa-spinner fa-spin"></i> 正在與 Google 同步...
+                </div>
             </div>
-            <div id="photo-grid">
-                <!-- 縮圖將由 JavaScript 插入此處 -->
-            </div>
-        </div>
-    </main>
 
-    <footer class="main-footer">
-        <p>Made with <i class="fa-solid fa-heart"></i> for our family</p>
-    </footer>
+            <!-- 步驟二：上傳 -->
+            <div id="step-2-upload" class="step-card hidden">
+                <h2><i class="fa-solid fa-folder-tree"></i> 步驟二：選擇目的地</h2>
+                <div class="form-group">
+                    <label for="folder-select">選擇現有旅遊相簿</label>
+                    <div class="input-with-button">
+                        <select id="folder-select"></select>
+                        <button id="browse-button" class="btn btn-secondary">
+                            <i class="fa-solid fa-images"></i> 瀏覽
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="new-folder-name">或建立新的旅遊相簿</label>
+                    <div class="input-with-button">
+                        <input type="text" id="new-folder-name" placeholder="例如：2025 東京之旅">
+                        <button id="create-folder-button" class="btn btn-secondary">
+                            <i class="fa-solid fa-plus"></i> 建立
+                        </button>
+                    </div>
+                </div>
+                
+                <hr>
+
+                <h2><i class="fa-solid fa-images"></i> 步驟三：選擇照片</h2>
+                <div class="form-group">
+                    <label for="file-input" class="file-input-label">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>點擊選擇照片 (可多選)</span>
+                    </label>
+                    <input type="file" id="file-input" multiple accept="image/*,video/*">
+                    <div id="file-list" class="file-list-container"></div>
+                </div>
+                
+                <button id="upload-button" class="btn btn-primary btn-large" disabled>
+                    <i class="fa-solid fa-rocket"></i> 開始上傳
+                </button>
+            </div>
+
+            <!-- 步驟三：上傳狀態 -->
+            <div id="step-3-status" class="step-card hidden">
+                <h2><i class="fa-solid fa-spinner fa-spin"></i> 上傳進度</h2>
+                <div id="upload-status"></div>
+            </div>
+            
+            <!-- 步驟四：照片瀏覽 -->
+            <div id="step-4-viewer" class="step-card hidden">
+                <div class="viewer-header">
+                    <button id="back-to-upload-button" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> 返回
+                    </button>
+                    <h2 id="viewer-album-title">相簿內容</h2>
+                </div>
+                <div id="photo-grid"></div>
+            </div>
+        </main>
+        
+        <footer class="main-footer">
+             <p>Made with <i class="fa-solid fa-heart"></i> for our family</p>
+        </footer>
+    </div>
 
     <script src="script.js"></script>
 </body>

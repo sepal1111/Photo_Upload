@@ -9,6 +9,12 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
+// 新增：頁面區塊
+const homeScreen = document.getElementById('home-screen');
+const appBody = document.getElementById('app-body');
+const goToUploadBtn = document.getElementById('go-to-upload-btn');
+const backToHomeBtn = document.getElementById('back-to-home-btn');
+
 // 取得操作介面的主要區塊
 const authorizeButton = document.getElementById('authorize_button');
 const signoutButton = document.getElementById('signout_button');
@@ -23,6 +29,8 @@ const loader = document.getElementById('loader');
 const browseButton = document.getElementById('browse-button');
 const photoGrid = document.getElementById('photo-grid');
 const backToUploadButton = document.getElementById('back-to-upload-button');
+const viewerAlbumTitle = document.getElementById('viewer-album-title');
+
 
 /**
  * 當 Google API Client 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
@@ -82,10 +90,8 @@ function handleAuthClick() {
   };
 
   if (gapi.client.getToken() === null) {
-    // 如果使用者尚未登入，彈出同意視窗
     tokenClient.requestAccessToken({prompt: 'consent'});
   } else {
-    // 如果使用者已登入，靜默刷新 token
     tokenClient.requestAccessToken({prompt: ''});
   }
 }
@@ -103,7 +109,7 @@ function handleSignoutClick() {
     step1Auth.classList.remove('hidden');
     step2Upload.classList.add('hidden');
     step3Status.classList.add('hidden');
-    step4Viewer.classList.add('hidden'); // 確保瀏覽器也隱藏
+    step4Viewer.classList.add('hidden');
     fileList.innerHTML = '';
     uploadButton.disabled = true;
   }
@@ -123,6 +129,7 @@ async function listFolders() {
     folderSelect.innerHTML = ''; // 清空舊選項
     if (folders && folders.length > 0) {
       folderSelect.disabled = false;
+      browseButton.disabled = false;
       folders.forEach(folder => {
         const option = document.createElement('option');
         option.value = folder.id;
@@ -133,6 +140,7 @@ async function listFolders() {
         const option = document.createElement('option');
         option.text = '沒有可用的子相簿';
         folderSelect.disabled = true;
+        browseButton.disabled = true;
         folderSelect.appendChild(option);
     }
   } catch (err) {
@@ -255,12 +263,15 @@ function uploadFiles() {
 function handleBrowseClick() {
     const folderSelect = document.getElementById('folder-select');
     const folderId = folderSelect.value;
+    const folderName = folderSelect.options[folderSelect.selectedIndex].text;
+
     if (!folderId || folderSelect.disabled) {
         alert('請先選擇一個相簿來瀏覽');
         return;
     }
     step2Upload.classList.add('hidden');
     step4Viewer.classList.remove('hidden');
+    viewerAlbumTitle.textContent = folderName; // 更新標題
     displayPhotos(folderId);
 }
 
@@ -309,6 +320,18 @@ function handleBackToUploadClick() {
 }
 
 
+// --- 新增：頁面切換邏輯 ---
+function showHomeScreen() {
+    homeScreen.classList.remove('hidden');
+    appBody.classList.add('hidden');
+}
+
+function showAppBody() {
+    homeScreen.classList.add('hidden');
+    appBody.classList.remove('hidden');
+}
+
+
 // --- 事件監聽器綁定 ---
 
 fileInput.addEventListener('change', () => {
@@ -332,4 +355,7 @@ uploadButton.onclick = uploadFiles;
 browseButton.onclick = handleBrowseClick;
 backToUploadButton.onclick = handleBackToUploadClick;
 
+// 新增：首頁按鈕事件
+goToUploadBtn.onclick = showAppBody;
+backToHomeBtn.onclick = showHomeScreen;
 

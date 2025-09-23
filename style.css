@@ -2,8 +2,8 @@
 
 /* --- 全域與基本設定 --- */
 :root {
-    --primary-color: #4285F4; /* Google Blue */
-    --secondary-color: #34A853; /* Google Green */
+    --primary-color: #4A90E2; /* A slightly softer blue */
+    --secondary-color: #50E3C2; /* A vibrant teal */
     --background-color: #f8f9fa;
     --card-background: #ffffff;
     --text-color: #3c4043;
@@ -24,20 +24,93 @@ body {
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
 }
 
 .hidden {
     display: none !important;
 }
 
+/* --- 新增：首頁樣式 --- */
+#home-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+    text-align: center;
+}
+.home-header {
+    margin-bottom: 3rem;
+}
+.home-header .fa-plane-departure {
+    font-size: 3rem;
+    color: var(--primary-color);
+}
+.home-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 1rem;
+}
+.home-header p {
+    color: var(--light-text-color);
+    font-size: 1.1rem;
+}
+.home-buttons {
+    display: grid;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 400px;
+}
+.home-btn {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    font-size: 1rem;
+}
+.home-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+}
+.home-btn i {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+.home-btn span {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+.home-btn small {
+    color: var(--light-text-color);
+    font-size: 0.9rem;
+}
+
+
+/* --- 應用程式主體樣式 --- */
+#app-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
 /* --- Header & Footer --- */
 .main-header {
     background: var(--card-background);
     color: var(--primary-color);
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -46,22 +119,26 @@ body {
     top: 0;
     z-index: 10;
 }
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 .main-header h1 {
-    font-size: 1.25rem;
-    margin-left: 0.5rem;
+    font-size: 1.15rem;
 }
 .main-header .fa-camera-retro {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
 }
-#signout_button {
+.header-btn {
     background: none;
-    border: 1px solid var(--border-color);
-    color: var(--light-text-color);
-    padding: 0.5rem 0.75rem;
-    border-radius: 20px;
+    border: none;
+    color: var(--primary-color);
+    font-size: 1.25rem;
     cursor: pointer;
-    font-size: 0.9rem;
+    padding: 0.5rem;
 }
+
 
 .main-footer {
     text-align: center;
@@ -135,7 +212,7 @@ hr {
     color: white;
 }
 .btn-primary:hover:not(:disabled) {
-    background-color: #1a73e8;
+    background-color: #357ABD;
 }
 .btn-secondary {
     background-color: #e8f0fe;
@@ -242,7 +319,7 @@ input[type="file"] {
     display: none;
 }
 
-/* --- 新增：照片瀏覽 --- */
+/* --- 照片瀏覽 --- */
 .viewer-header {
     display: flex;
     align-items: center;
@@ -255,6 +332,9 @@ input[type="file"] {
 }
 .viewer-header h2 {
     margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #photo-grid {
