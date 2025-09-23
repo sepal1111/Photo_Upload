@@ -1,5 +1,5 @@
 // --- 請修改以下四個變數 ---
-const API_KEY = 'YOUR_API_KEY'; // 暂时用不到，但建议保留
+const API_KEY = 'AIzaSyCxXx4cA4VkrczCqUZinzq4qSLDPtylmY0'; // 暂时用不到，但建议保留
 const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com'; // 來自 Google Cloud Console
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1W-iD3eo-RSaFnAIhZ_5G_QB1hF9p3q5ToQtfL8OIKcldb75h2vBP-D3JCqAqe111/exec'; // 來自 Apps Script 部署
 const ROOT_FOLDER_ID = '1yR8pE1Pz7hNwJ9d-srxwrE6zsjh_GsHY'; // 你的 Google Drive 根資料夾 ID
