@@ -104,17 +104,18 @@ async function listFolders() {
         const response = await gapi.client.drive.files.list({
             // --- 👇 請修改這裡 ---
 
-            // 將原本這一行註解掉 (在前面加上 //)
+            // 1. 在原本這一行的最前面加上斜線，把它變成註解
             // q: `'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
 
-            // 暫時換成下面這一行來測試
-            q: "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false",
-            
+            // 2. 換成下面這一行，讓它去讀取您雲端硬碟的「最上層」
+            q: "'root' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
+
             // --- 👆 修改結束 ---
 
             fields: 'files(id, name)',
             orderBy: 'name',
         });
+        
         const folders = response.result.files;
         if (folders && folders.length > 0) {
             folders.forEach(folder => {
