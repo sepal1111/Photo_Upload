@@ -1,23 +1,35 @@
-// script.js (全新版本)
-const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com'; // 請替換成您的用戶端ID
-const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU'; // 您可以在Google Cloud Console的"憑證"頁面建立一個API金鑰
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro'; // 請替換成您Google Drive中的主要資料夾ID
+// --- 請務必填寫以下三個變數 ---
+const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com';
+const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU'; 
+const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
 
+// --- 全域變數與 DOM 元素 ---
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
+// 取得操作介面的主要區塊
 const authorizeButton = document.getElementById('authorize_button');
 const signoutButton = document.getElementById('signout_button');
-const uploadContainer = document.getElementById('upload-container');
+const step1Auth = document.getElementById('step-1-auth');
+const step2Upload = document.getElementById('step-2-upload');
+const step3Status = document.getElementById('step-3-status');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const uploadButton = document.getElementById('upload-button');
 
-// 當頁面載入時，這兩個 function 會被 Google 的 script 呼叫
-window.gapiLoaded = () => {
+/**
+ * 當 Google API Client 函式庫載入完成時會被呼叫
+ */
+function gapiLoaded() {
   gapi.load('client', initializeGapiClient);
-};
+}
 
-window.gisLoaded = () => {
+/**
+ * 當 Google Identity Services (GIS) 函式庫載入完成時會被呼叫
+ */
+function gisLoaded() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -25,8 +37,11 @@ window.gisLoaded = () => {
   });
   gisInited = true;
   maybeEnableButtons();
-};
+}
 
+/**
+ * 初始化 GAPI client
+ */
 async function initializeGapiClient() {
   await gapi.client.init({
     apiKey: API_KEY,
@@ -36,43 +51,60 @@ async function initializeGapiClient() {
   maybeEnableButtons();
 }
 
+/**
+ * 確保 GAPI 和 GIS 都初始化後，才顯示登入按鈕
+ */
 function maybeEnableButtons() {
   if (gapiInited && gisInited) {
     authorizeButton.style.visibility = 'visible';
   }
 }
 
+/**
+ * 處理授權按鈕的點擊事件
+ */
 function handleAuthClick() {
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
       throw (resp);
     }
-    // 登入成功
-    signoutButton.style.display = 'block';
-    authorizeButton.innerText = '重新整理權限';
-    uploadContainer.style.display = 'block';
+    // 登入成功後更新 UI
+    signoutButton.classList.remove('hidden');
+    step1Auth.classList.add('hidden');
+    step2Upload.classList.remove('hidden');
     await listFolders();
   };
 
   if (gapi.client.getToken() === null) {
+    // 如果使用者尚未登入，彈出同意視窗
     tokenClient.requestAccessToken({prompt: 'consent'});
   } else {
+    // 如果使用者已登入，靜默刷新 token
     tokenClient.requestAccessToken({prompt: ''});
   }
 }
 
+/**
+ * 處理登出按鈕的點擊事件
+ */
 function handleSignoutClick() {
   const token = gapi.client.getToken();
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken('');
-    // 登出後 UI 更新
-    uploadContainer.style.display = 'none';
-    signoutButton.style.display = 'none';
-    authorizeButton.innerText = '授權登入Google帳號';
+    // 登出後重置 UI
+    signoutButton.classList.add('hidden');
+    step1Auth.classList.remove('hidden');
+    step2Upload.classList.add('hidden');
+    step3Status.classList.add('hidden');
+    fileList.innerHTML = '';
+    uploadButton.disabled = true;
   }
 }
 
+/**
+ * 列出主要資料夾下的子資料夾，並更新下拉選單
+ */
 async function listFolders() {
   try {
     const response = await gapi.client.drive.files.list({
@@ -91,20 +123,23 @@ async function listFolders() {
       });
     } else {
         const option = document.createElement('option');
-        option.text = '沒有可用的子資料夾';
+        option.text = '沒有可用的子相簿';
         option.disabled = true;
         folderSelect.appendChild(option);
     }
   } catch (err) {
     console.error("列出資料夾失敗:", err);
-    alert('無法讀取資料夾清單，請確認主要資料夾ID是否正確，以及您是否有權限存取。');
+    alert('無法讀取相簿清單，請確認主要資料夾ID是否正確，以及您是否有權限存取。');
   }
 }
 
+/**
+ * 建立新的子資料夾
+ */
 async function createFolder() {
   const newFolderName = document.getElementById('new-folder-name').value;
   if (!newFolderName) {
-    alert('請輸入新資料夾名稱');
+    alert('請輸入新相簿的名稱');
     return;
   }
   try {
@@ -116,52 +151,57 @@ async function createFolder() {
       },
       fields: 'id'
     });
-    alert(`資料夾 "${newFolderName}" 建立成功！`);
+    alert(`相簿 "${newFolderName}" 建立成功！`);
     document.getElementById('new-folder-name').value = '';
     await listFolders(); // 重新整理下拉列表
   } catch (err) {
     console.error("建立資料夾失敗:", err);
-    alert('建立資料夾失敗。');
+    alert('建立相簿失敗。');
   }
 }
 
+/**
+ * 上傳使用者選擇的檔案
+ */
 function uploadFiles() {
-  const files = document.getElementById('file-input').files;
+  const files = fileInput.files;
   const folderId = document.getElementById('folder-select').value;
-  const uploadStatus = document.getElementById('upload-status');
-
+  
   if (files.length === 0) {
-    alert('請選擇要上傳的檔案');
+    alert('請先選擇要上傳的照片');
     return;
   }
-  if (!folderId) {
-    alert('請選擇要上傳的資料夾');
+  if (!folderId || document.getElementById('folder-select').disabled) {
+    alert('請選擇要上傳到的相簿');
     return;
   }
 
-  uploadStatus.innerHTML = ''; // 清空狀態
+  // 更新 UI 至上傳狀態
+  step2Upload.classList.add('hidden');
+  step3Status.classList.remove('hidden');
+  const uploadStatus = document.getElementById('upload-status');
+  uploadStatus.innerHTML = ''; // 清空舊狀態
 
+  // 迭代處理每個檔案
   for (const file of files) {
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = () => {
         const fileContent = reader.result;
-        const resource = {
-            'name': file.name,
-            'parents': [folderId]
-        };
-        // 使用 multipart upload
+        
+        // 使用 multipart upload 格式
         const boundary = '-------314159265358979323846';
         const delimiter = "\r\n--" + boundary + "\r\n";
         const close_delim = "\r\n--" + boundary + "--";
         
         const contentType = file.type || 'application/octet-stream';
         const metadata = {
-            name: resource.name,
-            parents: resource.parents,
+            name: file.name,
+            parents: [folderId],
             mimeType: contentType
         };
 
+        // 將檔案內容編碼為 base64
         const base64Data = btoa(new Uint8Array(fileContent).reduce((data, byte) => data + String.fromCharCode(byte), ''));
         
         const multipartRequestBody =
@@ -186,32 +226,39 @@ function uploadFiles() {
         
         request.execute(function(file) {
             console.log(file);
-            uploadStatus.innerHTML += `<p>✅ ${file.name} 上傳成功！</p>`;
+            uploadStatus.innerHTML += `<p class="status-success"><i class="fa-solid fa-check-circle"></i> ${file.name} 上傳成功！</p>`;
         });
     };
   }
 }
 
-// 綁定按鈕事件
+// --- 事件監聽器綁定 ---
+
+// 監聽檔案選擇的變化
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        fileList.innerHTML = ''; // 清空舊列表
+        for (const file of fileInput.files) {
+            fileList.innerHTML += `<p><i class="fa-solid fa-image"></i> ${file.name}</p>`;
+        }
+        uploadButton.disabled = false; // 啟用上傳按鈕
+    } else {
+        fileList.innerHTML = '';
+        uploadButton.disabled = true; // 禁用上傳按鈕
+    }
+});
+
+// 將函式綁定到按鈕的點擊事件
 authorizeButton.onclick = handleAuthClick;
 signoutButton.onclick = handleSignoutClick;
 document.getElementById('create-folder-button').onclick = createFolder;
-document.getElementById('upload-button').onclick = uploadFiles;
+uploadButton.onclick = uploadFiles;
 
-// 在 HTML script 標籤中加入 onload="gapiLoaded()" 和 onreadystatechange="gisLoaded()"
-// 由於我們使用 async defer，所以需要讓 script 載入後主動呼叫我們的 function
-// 在 script 標籤中加入 `src="...js?onload=gapiLoaded"` 是一種方式
-// 但我們改用 window function 的方式，更乾淨
-const scriptGis = document.createElement('script');
-scriptGis.src = 'https://apis.google.com/js/api.js';
-scriptGis.async = true;
-scriptGis.defer = true;
-scriptGis.onload = () => gapiLoaded();
-document.body.appendChild(scriptGis);
 
-const scriptApi = document.createElement('script');
-scriptApi.src = 'https://accounts.google.com/gsi/client';
-scriptApi.async = true;
-scriptApi.defer = true;
-scriptApi.onload = () => gisLoaded();
-document.body.appendChild(scriptApi);
+// --- 動態載入 Google 的 JS 函式庫 ---
+// 這是為了確保在執行我們的程式碼前，Google 的函式庫已經準備就緒
+// 我們將 gapiLoaded 和 gisLoaded 函式掛載到 window 物件上，
+// 這樣 Google 的 script 載入後就能呼叫它們。
+
+window.gapiLoaded = gapiLoaded;
+window.gisLoaded = gisLoaded;

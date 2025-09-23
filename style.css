@@ -1,12 +1,217 @@
+/* style.css */
+
+/* --- 全域與基本設定 --- */
+:root {
+    --primary-color: #4285F4; /* Google Blue */
+    --secondary-color: #34A853; /* Google Green */
+    --background-color: #f8f9fa;
+    --card-background: #ffffff;
+    --text-color: #3c4043;
+    --light-text-color: #5f6368;
+    --border-color: #dadce0;
+    --success-color: #1e8e3e;
+    --error-color: #d93025;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
-    font-family: sans-serif;
-    padding: 20px;
+    font-family: 'Noto Sans TC', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
-#upload-container {
-    margin-top: 20px;
+.hidden {
+    display: none !important;
 }
 
-#folder-select, #new-folder-name, #file-input {
-    margin-right: 10px;
+/* --- Header & Footer --- */
+.main-header {
+    background: var(--card-background);
+    color: var(--primary-color);
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.main-header h1 {
+    font-size: 1.25rem;
+    margin-left: 0.5rem;
+}
+.main-header .fa-camera-retro {
+    font-size: 1.5rem;
+}
+#signout_button {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--light-text-color);
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.main-footer {
+    text-align: center;
+    padding: 1rem;
+    color: var(--light-text-color);
+    font-size: 0.9rem;
+    margin-top: auto;
+}
+.main-footer .fa-heart {
+    color: var(--error-color);
+}
+
+/* --- 主要容器與卡片布局 --- */
+.container {
+    padding: 1.5rem 1rem;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.step-card {
+    background-color: var(--card-background);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+}
+.step-card h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+.step-card h2 .fa-solid, .step-card h2 .fa-brands {
+    margin-right: 0.75rem;
+    color: var(--primary-color);
+}
+.step-card p {
+    color: var(--light-text-color);
+    margin-bottom: 1.5rem;
+}
+hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1.5rem 0;
+}
+
+/* --- 按鈕樣式 --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    width: 100%;
+    font-size: 1rem;
+}
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: #1a73e8;
+}
+.btn-secondary {
+    background-color: #e8f0fe;
+    color: var(--primary-color);
+}
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* --- 表單元素 --- */
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--light-text-color);
+}
+select, input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+}
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+}
+.input-with-button input {
+    flex-grow: 1;
+}
+.input-with-button button {
+    width: auto;
+    flex-shrink: 0;
+}
+
+/* --- 自訂檔案上傳按鈕 --- */
+input[type="file"] {
+    display: none;
+}
+.file-input-label {
+    background: #e8f0fe;
+    border: 2px dashed var(--primary-color);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    color: var(--primary-color);
+}
+.file-input-label span {
+    display: block;
+    margin-top: 0.5rem;
+}
+#file-list p {
+    background-color: #f1f3f4;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+/* --- 上傳狀態 --- */
+#upload-status p {
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+#upload-status .status-uploading {
+    background-color: #e8f0fe;
+    color: var(--primary-color);
+}
+#upload-status .status-success {
+    background-color: #e6f4ea;
+    color: var(--success-color);
 }
