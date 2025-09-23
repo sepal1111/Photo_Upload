@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>家庭旅遊相簿</title>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - 一個好看的免費字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome -->
+    <!-- Font Awesome - 免費圖示庫 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Google Scripts with onload callbacks -->
+    <!-- Google Identity Services (GIS) Script -->
     <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
     <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
 </head>
@@ -34,15 +34,11 @@
         <div id="step-1-auth" class="step-card">
             <h2><i class="fa-brands fa-google"></i> 步驟一：連結雲端硬碟</h2>
             <p>請先登入您的 Google 帳號，以授權應用程式存取雲端硬碟。</p>
-            
-            <!-- *** 修改這裡：新增 disabled 屬性 *** -->
             <button id="authorize_button" class="btn btn-primary" disabled>
                 <i class="fa-brands fa-google"></i> 連結 Google 帳號
             </button>
-
-            <!-- *** 新增這裡：載入提示 *** -->
             <div id="loader" class="loader">
-                <p><i class="fa-solid fa-spinner fa-spin"></i> 正在與 Google 同步...</p>
+                <i class="fa-solid fa-spinner fa-spin"></i> 正在與 Google 同步...
             </div>
         </div>
 
@@ -51,7 +47,12 @@
             <h2><i class="fa-solid fa-folder-tree"></i> 步驟二：選擇目的地</h2>
             <div class="form-group">
                 <label for="folder-select">選擇現有旅遊相簿</label>
-                <select id="folder-select"></select>
+                <div class="input-with-button">
+                    <select id="folder-select"></select>
+                    <button id="browse-button" class="btn btn-secondary">
+                        <i class="fa-solid fa-images"></i> 瀏覽
+                    </button>
+                </div>
             </div>
             <div class="form-group">
                 <label for="new-folder-name">或建立新的旅遊相簿</label>
@@ -72,7 +73,7 @@
                     <span>點擊選擇照片 (可多選)</span>
                 </label>
                 <input type="file" id="file-input" multiple accept="image/*,video/*">
-                <div id="file-list"></div>
+                <div id="file-list" class="file-list-container"></div>
             </div>
             
             <button id="upload-button" class="btn btn-primary btn-large" disabled>
@@ -85,6 +86,19 @@
             <h2><i class="fa-solid fa-spinner fa-spin"></i> 上傳進度</h2>
             <div id="upload-status"></div>
         </div>
+        
+        <!-- 新增步驟四：照片瀏覽 -->
+        <div id="step-4-viewer" class="step-card hidden">
+            <div class="viewer-header">
+                <button id="back-to-upload-button" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> 返回
+                </button>
+                <h2>相簿內容</h2>
+            </div>
+            <div id="photo-grid">
+                <!-- 縮圖將由 JavaScript 插入此處 -->
+            </div>
+        </div>
     </main>
 
     <footer class="main-footer">
@@ -94,3 +108,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

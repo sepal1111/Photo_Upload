@@ -4,7 +4,7 @@ const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU';
 const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
 
 // --- 全域變數與 DOM 元素 ---
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/drive.readonly';
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
@@ -15,10 +15,14 @@ const signoutButton = document.getElementById('signout_button');
 const step1Auth = document.getElementById('step-1-auth');
 const step2Upload = document.getElementById('step-2-upload');
 const step3Status = document.getElementById('step-3-status');
+const step4Viewer = document.getElementById('step-4-viewer');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const uploadButton = document.getElementById('upload-button');
 const loader = document.getElementById('loader');
+const browseButton = document.getElementById('browse-button');
+const photoGrid = document.getElementById('photo-grid');
+const backToUploadButton = document.getElementById('back-to-upload-button');
 
 /**
  * 當 Google API Client 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
@@ -99,6 +103,7 @@ function handleSignoutClick() {
     step1Auth.classList.remove('hidden');
     step2Upload.classList.add('hidden');
     step3Status.classList.add('hidden');
+    step4Viewer.classList.add('hidden'); // 確保瀏覽器也隱藏
     fileList.innerHTML = '';
     uploadButton.disabled = true;
   }
@@ -179,38 +184,29 @@ function uploadFiles() {
     return;
   }
 
-  // 更新 UI 至上傳狀態
   step2Upload.classList.add('hidden');
   step3Status.classList.remove('hidden');
   const uploadStatus = document.getElementById('upload-status');
-  uploadStatus.innerHTML = ''; // 清空舊狀態
+  uploadStatus.innerHTML = ''; 
 
-  // 新增計數器以追蹤上傳進度
   let uploadedCount = 0;
   const totalFiles = files.length;
 
-  // 迭代處理每個檔案
   for (const file of files) {
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = () => {
         const fileContent = reader.result;
-        
-        // 使用 multipart upload 格式
         const boundary = '-------314159265358979323846';
         const delimiter = "\r\n--" + boundary + "\r\n";
         const close_delim = "\r\n--" + boundary + "--";
-        
         const contentType = file.type || 'application/octet-stream';
         const metadata = {
             name: file.name,
             parents: [folderId],
             mimeType: contentType
         };
-
-        // 將檔案內容編碼為 base64
         const base64Data = btoa(new Uint8Array(fileContent).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-        
         const multipartRequestBody =
             delimiter +
             'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
@@ -225,14 +221,12 @@ function uploadFiles() {
             'path': '/upload/drive/v3/files',
             'method': 'POST',
             'params': {'uploadType': 'multipart'},
-            'headers': {
-                'Content-Type': 'multipart/related; boundary="' + boundary + '"'
-            },
+            'headers': {'Content-Type': 'multipart/related; boundary="' + boundary + '"'},
             'body': multipartRequestBody
         });
         
         request.execute(function(file, rawResponse) {
-            uploadedCount++; // 每處理完一個檔案就累加計數器
+            uploadedCount++;
             if (!file || file.error) {
                 console.error("上傳失敗:", file.error, rawResponse);
                 uploadStatus.innerHTML += `<p class="status-error"><i class="fa-solid fa-times-circle"></i> ${metadata.name} 上傳失敗。</p>`;
@@ -240,27 +234,83 @@ function uploadFiles() {
                 console.log(file);
                 uploadStatus.innerHTML += `<p class="status-success"><i class="fa-solid fa-check-circle"></i> ${file.name} 上傳成功！</p>`;
             }
-
-            // 檢查是否所有檔案都已處理完畢
             if (uploadedCount === totalFiles) {
                 uploadStatus.innerHTML += `<p><strong>所有檔案處理完畢！3秒後將返回上傳頁面...</strong></p>`;
                 setTimeout(() => {
-                    // 重置 UI 回到步驟二（選擇檔案頁面）
                     step3Status.classList.add('hidden');
                     step2Upload.classList.remove('hidden');
-                    fileInput.value = ''; // 清空已選檔案
-                    fileList.innerHTML = ''; // 清空檔案列表
-                    uploadButton.disabled = true; // 禁用上傳按鈕
-                }, 3000); // 延遲 3 秒讓使用者看到最終訊息
+                    fileInput.value = '';
+                    fileList.innerHTML = '';
+                    uploadButton.disabled = true;
+                }, 3000);
             }
         });
     };
   }
 }
 
+/**
+ * 處理瀏覽按鈕的點擊事件
+ */
+function handleBrowseClick() {
+    const folderSelect = document.getElementById('folder-select');
+    const folderId = folderSelect.value;
+    if (!folderId || folderSelect.disabled) {
+        alert('請先選擇一個相簿來瀏覽');
+        return;
+    }
+    step2Upload.classList.add('hidden');
+    step4Viewer.classList.remove('hidden');
+    displayPhotos(folderId);
+}
+
+/**
+ * 獲取並顯示指定資料夾中的照片
+ * @param {string} folderId The ID of the folder to browse.
+ */
+async function displayPhotos(folderId) {
+    photoGrid.innerHTML = `<div class="photo-grid-message"><i class="fa-solid fa-spinner fa-spin"></i> 正在載入照片...</div>`;
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
+            fields: "files(id, name, thumbnailLink, webViewLink)",
+            pageSize: 100
+        });
+        const files = response.result.files;
+        if (!files || files.length === 0) {
+            photoGrid.innerHTML = `<div class="photo-grid-message"><i class="fa-solid fa-folder-open"></i> 這個相簿沒有照片。</div>`;
+            return;
+        }
+        let thumbnailsHTML = '';
+        for (const file of files) {
+            if (file.thumbnailLink) {
+                thumbnailsHTML += `
+                    <a href="${file.webViewLink}" target="_blank" class="thumbnail" title="${file.name}">
+                        <img src="${file.thumbnailLink.replace('=s220', '=s400')}" alt="${file.name}" loading="lazy">
+                    </a>
+                `;
+            }
+        }
+        photoGrid.innerHTML = thumbnailsHTML;
+    } catch (err) {
+        console.error("載入照片失敗:", err);
+        photoGrid.innerHTML = `<div class="photo-grid-message"><i class="fa-solid fa-exclamation-triangle"></i> 載入照片失敗。</div>`;
+        alert('載入照片失敗，請稍後再試。');
+    }
+}
+
+/**
+ * 處理返回按鈕的點擊事件
+ */
+function handleBackToUploadClick() {
+    step4Viewer.classList.add('hidden');
+    step2Upload.classList.remove('hidden');
+    photoGrid.innerHTML = ''; // 清空照片，節省記憶體
+}
+
+
 // --- 事件監聽器綁定 ---
 
-// 監聽檔案選擇的變化
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
         const fileItems = [];
@@ -268,15 +318,18 @@ fileInput.addEventListener('change', () => {
             fileItems.push(`<p><i class="fa-solid fa-image"></i> ${file.name}</p>`);
         }
         fileList.innerHTML = fileItems.join('');
-        uploadButton.disabled = false; // 啟用上傳按鈕
+        uploadButton.disabled = false;
     } else {
         fileList.innerHTML = '';
-        uploadButton.disabled = true; // 禁用上傳按鈕
+        uploadButton.disabled = true;
     }
 });
 
-// 將函式綁定到按鈕的點擊事件
 authorizeButton.onclick = handleAuthClick;
 signoutButton.onclick = handleSignoutClick;
 document.getElementById('create-folder-button').onclick = createFolder;
 uploadButton.onclick = uploadFiles;
+browseButton.onclick = handleBrowseClick;
+backToUploadButton.onclick = handleBackToUploadClick;
+
+
