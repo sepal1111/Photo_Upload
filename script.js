@@ -68,7 +68,7 @@ function handleAuthClick() {
         document.getElementById('auth-container').style.display = 'none';
         document.getElementById('upload-form').style.display = 'block';
         signoutButton.style.display = 'block';
-
+        await testDriveConnection(); 
         // 載入資料夾列表
         await listFolders();
     };
