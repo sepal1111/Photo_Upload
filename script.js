@@ -198,7 +198,7 @@ function uploadFiles() {
         
         // 使用 multipart upload 格式
         const boundary = '-------314159265358979323846';
-        const delimiter = "\r\n--" + boundary + "\r_n";
+        const delimiter = "\r\n--" + boundary + "\r\n";
         const close_delim = "\r\n--" + boundary + "--";
         
         const contentType = file.type || 'application/octet-stream';
