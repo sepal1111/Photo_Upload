@@ -2,10 +2,8 @@
 const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com';
 const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU'; 
 const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
-
-
 // --- 全域變數與 DOM 元素 ---
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly'; // *** 修改這裡：新增權限 ***
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
@@ -19,7 +17,7 @@ const step3Status = document.getElementById('step-3-status');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const uploadButton = document.getElementById('upload-button');
-const loader = document.getElementById('loader'); // *** 新增 loader 元素 ***
+const loader = document.getElementById('loader');
 
 /**
  * 當 Google API Client 函式庫載入完成時會被呼叫 (由 HTML onload 觸發)
@@ -57,7 +55,6 @@ async function initializeGapiClient() {
  * 確保 GAPI 和 GIS 都初始化後，才啟用登入按鈕並隱藏載入提示
  */
 function maybeEnableButtons() {
-  // *** 修改這裡的邏輯 ***
   if (gapiInited && gisInited) {
     loader.classList.add('hidden'); // 隱藏載入提示
     authorizeButton.disabled = false; // 啟用按鈕
@@ -68,7 +65,6 @@ function maybeEnableButtons() {
  * 處理授權按鈕的點擊事件
  */
 function handleAuthClick() {
-  // *** 移除這裡的舊安全檢查，因為按鈕在未就緒前是禁用的 ***
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
       throw (resp);
@@ -105,7 +101,6 @@ function handleSignoutClick() {
     fileList.innerHTML = '';
     uploadButton.disabled = true;
 
-    // *** 新增這裡：登出後重置按鈕狀態 ***
     authorizeButton.disabled = true;
     loader.classList.remove('hidden');
     // 重新初始化，以備下次登入
