@@ -135,6 +135,20 @@ async function listFolders() {
 
 refreshFoldersBtn.onclick = listFolders;
 
+async function testDriveConnection() {
+  try {
+    console.log("正在執行連線測試 (drive.about.get)...");
+    const response = await gapi.client.drive.about.get({
+      fields: 'user'
+    });
+    console.log("✅ 連線測試成功！目前登入的使用者是:", response.result.user);
+    alert(`連線測試成功！\n登入者: ${response.result.user.emailAddress}`);
+  } catch (err) {
+    console.error("❌ 連線測試失敗:", err);
+    alert("連線測試失敗，請查看主控台的錯誤訊息。");
+  }
+}
+
 // 建立新資料夾
 createFolderBtn.onclick = async () => {
     const folderName = newFolderNameInput.value.trim();
