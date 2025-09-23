@@ -132,7 +132,10 @@ createFolderBtn.onclick = async () => {
         alert('請輸入新相簿的名稱！');
         return;
     }
+    // 關閉按鈕，防止重複點擊
+    createFolderBtn.disabled = true;
     statusDiv.textContent = `正在建立相簿 "${folderName}"...`;
+    
     try {
         const response = await gapi.client.drive.files.create({
             resource: {
@@ -143,16 +146,29 @@ createFolderBtn.onclick = async () => {
             fields: 'id, name'
         });
         const newFolder = response.result;
-        statusDiv.textContent = `相簿 "${newFolder.name}" 建立成功！`;
+        statusDiv.textContent = `✅ 相簿 "${newFolder.name}" 建立成功！`;
         newFolderNameInput.value = '';
+
+        // --- 👇 新增的關鍵程式碼開始 ---
+        // 無論是誰建立了資料夾，都立刻呼叫 Apps Script 將擁有權轉移給您
+        // 我們可以完美重用處理檔案的 changeOwner 函式
+        await changeOwner(newFolder.id, newFolder.name + " (資料夾)");
+        // --- 👆 新增的關鍵程式碼結束 ---
+
+        // 在擁有權轉移後，再重新整理列表，確保能看到最新的狀態
         await listFolders();
-        // 自動選擇新建的資料夾
+        
+        // 自動選擇剛剛建立的資料夾
         folderSelect.value = newFolder.id;
         updateSelectedFolder();
+
     } catch (err) {
-    console.error("建立資料夾時發生錯誤:", err); // 在主控台印出完整錯誤物件
-    const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
-    statusDiv.textContent = `建立相簿失敗: ${errorDetails}`;
+        console.error("建立資料夾時發生錯誤:", err);
+        const errorDetails = err.result ? err.result.error.message : JSON.stringify(err);
+        statusDiv.textContent = `建立相簿失敗: ${errorDetails}`;
+    } finally {
+        // 無論成功或失敗，都重新啟用按鈕
+        createFolderBtn.disabled = false;
     }
 };
 
