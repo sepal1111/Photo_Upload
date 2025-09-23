@@ -2,6 +2,7 @@
 const CLIENT_ID = '279897575373-3gtk5s6df3uf8oj3h44nccsca0aigmu0.apps.googleusercontent.com';
 const API_KEY = 'AIzaSyDa6Bjp1-JggYvOz_LOdeZeTfYxVfDrqBU'; 
 const MAIN_FOLDER_ID = '1uNMoZWf9J89pX3lxYViTDTxYtUb4lbro';
+
 // --- 全域變數與 DOM 元素 ---
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly'; // *** 修改這裡：新增權限 ***
 let tokenClient;
@@ -191,6 +192,10 @@ function uploadFiles() {
   const uploadStatus = document.getElementById('upload-status');
   uploadStatus.innerHTML = ''; // 清空舊狀態
 
+  // 新增計數器以追蹤上傳進度
+  let uploadedCount = 0;
+  const totalFiles = files.length;
+
   // 迭代處理每個檔案
   for (const file of files) {
     const reader = new FileReader();
@@ -234,12 +239,26 @@ function uploadFiles() {
         });
         
         request.execute(function(file, rawResponse) {
+            uploadedCount++; // 每處理完一個檔案就累加計數器
             if (!file || file.error) {
                 console.error("上傳失敗:", file.error, rawResponse);
                 uploadStatus.innerHTML += `<p class="status-error"><i class="fa-solid fa-times-circle"></i> ${metadata.name} 上傳失敗。</p>`;
             } else {
                 console.log(file);
                 uploadStatus.innerHTML += `<p class="status-success"><i class="fa-solid fa-check-circle"></i> ${file.name} 上傳成功！</p>`;
+            }
+
+            // 檢查是否所有檔案都已處理完畢
+            if (uploadedCount === totalFiles) {
+                uploadStatus.innerHTML += `<p><strong>所有檔案處理完畢！3秒後將返回上傳頁面...</strong></p>`;
+                setTimeout(() => {
+                    // 重置 UI 回到步驟二（選擇檔案頁面）
+                    step3Status.classList.add('hidden');
+                    step2Upload.classList.remove('hidden');
+                    fileInput.value = ''; // 清空已選檔案
+                    fileList.innerHTML = ''; // 清空檔案列表
+                    uploadButton.disabled = true; // 禁用上傳按鈕
+                }, 3000); // 延遲 3 秒讓使用者看到最終訊息
             }
         });
     };
@@ -252,7 +271,7 @@ function uploadFiles() {
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
         fileList.innerHTML = ''; // 清空舊列表
-        for (const file of fileInput.files) {
+        for (const file of files) {
             fileList.innerHTML += `<p><i class="fa-solid fa-image"></i> ${file.name}</p>`;
         }
         uploadButton.disabled = false; // 啟用上傳按鈕
